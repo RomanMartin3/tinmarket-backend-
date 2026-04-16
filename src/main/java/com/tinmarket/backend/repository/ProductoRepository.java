@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     @Query("SELECT DISTINCT p FROM Producto p " +
+            "LEFT JOIN CodigoBarraProducto c ON c.producto.id = p.id " +
             "WHERE p.negocio.id = :negocioId AND p.activo = true " +
             "AND (LOWER(p.nombre) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR p.sku = :query " +
