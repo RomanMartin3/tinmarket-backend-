@@ -20,6 +20,6 @@ public class ProveedorController {
 
     @GetMapping
     public ResponseEntity<List<Proveedor>> listar(@RequestParam Long negocioId) {
-        return ResponseEntity.ok(proveedorRepository.findByNegocioIdAndActivoTrue(negocioId));
+        return ResponseEntity.ok(proveedorRepository.findByNegocioId(negocioId));
     }
 }

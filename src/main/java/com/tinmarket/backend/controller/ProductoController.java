@@ -55,6 +55,6 @@ public class ProductoController {
         List<Producto> resultados = productoRepository.buscarEnPOS(query, negocioId);
         return ResponseEntity.ok(resultados);
     }
-    
+
 
 }
