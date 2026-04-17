@@ -11,6 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
+    List<Producto> findByNegocioIdAndActivoTrue(Long negocioId);
 
     @Query("SELECT DISTINCT p FROM Producto p " +
             "LEFT JOIN CodigoBarraProducto c ON c.producto.id = p.id " +
@@ -19,4 +20,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
             "OR p.sku = :query " +
             "OR p.id IN (SELECT c.producto.id FROM CodigoBarraProducto c WHERE c.codigoBarra = :query))")
     List<Producto> buscarEnPOS(@Param("query") String query, @Param("negocioId") Long negocioId);
+
+
 }

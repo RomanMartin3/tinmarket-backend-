@@ -24,12 +24,24 @@ public class ProductoController {
         this.productoRepository = productoRepository;
     }
 
+    @GetMapping
+    public ResponseEntity<List<Producto>> listarTodos(@RequestParam Long negocioId) {
+
+        List<Producto> productos = productoService.listarActivosPorNegocio(negocioId);
+        return ResponseEntity.ok(productos);
+    }
+
     // 1. Crear o Editar Producto
     // POST http://localhost:8080/api/productos
     @PostMapping
     public ResponseEntity<ProductoResponseDTO> guardarProducto(@RequestBody @Valid ProductoRequestDTO dto) {
         ProductoResponseDTO response = productoService.crearEditarProducto(dto);
         return ResponseEntity.ok(response);
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {
+        productoService.eliminarProducto(id);
+        return ResponseEntity.noContent().build();
     }
 
     // 2. Buscador Tipo Google
@@ -44,7 +56,7 @@ public class ProductoController {
         return ResponseEntity.ok(resultados);
     }
 
-    // 3. Buscar por SKU exacto (Para lector de barras en modo carga)
-    // GET http://localhost:8080/api/productos/sku/{sku}?negocioId=1
+
+    }
 
 }

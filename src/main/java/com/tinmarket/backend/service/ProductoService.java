@@ -110,6 +110,26 @@ public class ProductoService {
         return mapToResponse(guardado);
     }
 
+    public List<Producto> listarActivosPorNegocio(Long negocioId) {
+        // Aquí podríamos validar si el negocio existe, si el usuario tiene permisos, etc.
+        return productoRepository.findByNegocioIdAndActivoTrue(negocioId);
+    }
+
+    public List<Producto> buscarEnPOS(String query, Long negocioId) {
+        return productoRepository.buscarEnPOS(query, negocioId);
+    }
+
+    // --- BAJA LÓGICA DE PRODUCTO ---
+    @Transactional
+    public void eliminarProducto(Long id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
+
+        // Lo marcamos como inactivo en lugar de borrarlo físicamente
+        producto.setActivo(false);
+        productoRepository.save(producto);
+    }
+
     private ProductoResponseDTO mapToResponse(Producto p) {
         ProductoResponseDTO resp = new ProductoResponseDTO();
         resp.setId(p.getId());
