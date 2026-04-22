@@ -12,4 +12,5 @@ public class VentaResponseDTO {
     private String nombreCajero;
     private BigDecimal total;
     private List<DetalleTicketDTO> items;
+    private String estado;
 }

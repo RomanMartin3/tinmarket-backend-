@@ -163,7 +163,19 @@ public class VentaService {
         dto.setId(v.getId());
         dto.setFecha(v.getFechaVenta());
         dto.setTotal(v.getTotalVenta());
-        // Aquí mapearías los items...
+        dto.setEstado(v.getEstado().name());
+
+        // Mapeamos los items del ticket
+        List<com.tinmarket.backend.dto.DetalleTicketDTO> detalles = v.getDetalles().stream().map(d -> {
+            com.tinmarket.backend.dto.DetalleTicketDTO item = new com.tinmarket.backend.dto.DetalleTicketDTO();
+            item.setNombreProducto(d.getNombreProductoHistorico());
+            item.setCantidad(d.getCantidad());
+            item.setPrecioUnitario(d.getPrecioUnitarioHistorico());
+            item.setSubTotal(d.getSubTotal());
+            return item;
+        }).collect(Collectors.toList());
+
+        dto.setItems(detalles);
         return dto;
     }
     public VentaResponseDTO buscarPorId(Long id) {
