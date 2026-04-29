@@ -6,6 +6,7 @@ import com.tinmarket.backend.model.enums.TipoDescuento;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Entity
@@ -36,5 +37,10 @@ public class Promocion {
     @Column(name = "valor_descuento", nullable = false)
     private BigDecimal valorDescuento;
 
+
     private boolean activa;
+
+    @OneToMany(mappedBy = "promocion", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties("promocion")
+    private List<ReglaPromocion> reglas;
 }

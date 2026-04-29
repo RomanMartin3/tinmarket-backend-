@@ -1,21 +1,16 @@
 package com.tinmarket.backend.service;
 
-
-import com.tinmarket.backend.dto.ItemVentaRequestDTO;
-import com.tinmarket.backend.dto.NuevaVentaRequestDTO;
-import com.tinmarket.backend.dto.PagoVentaDTO;
-import com.tinmarket.backend.dto.VentaResponseDTO;
+import com.tinmarket.backend.dto.*;
 import com.tinmarket.backend.model.*;
-import com.tinmarket.backend.model.enums.EstadoCaja;
-import com.tinmarket.backend.model.enums.EstadoVenta;
-import com.tinmarket.backend.model.enums.TipoMovimiento;
-import com.tinmarket.backend.model.enums.TipoPago;
+import com.tinmarket.backend.model.enums.*;
 import com.tinmarket.backend.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,21 +24,29 @@ public class VentaService {
     private final NegocioRepository negocioRepository;
     private final MovimientoStockRepository movimientoStockRepository;
 
-    public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository, CodigoBarraProductoRepository codigoBarraRepository, SesionCajaRepository sesionCajaRepository, NegocioRepository negocioRepository, MovimientoStockRepository movimientoStockRepository) {
+    // --- CAMBIO 1 INICIO: Inyectamos PromocionRepository y el nuevo MotorPromociones ---
+    private final PromocionRepository promocionRepository;
+    private final MotorPromociones motorPromociones;
+
+    public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository,
+                        CodigoBarraProductoRepository codigoBarraRepository, SesionCajaRepository sesionCajaRepository,
+                        NegocioRepository negocioRepository, MovimientoStockRepository movimientoStockRepository,
+                        PromocionRepository promocionRepository, MotorPromociones motorPromociones) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
         this.codigoBarraRepository = codigoBarraRepository;
         this.sesionCajaRepository = sesionCajaRepository;
         this.negocioRepository = negocioRepository;
         this.movimientoStockRepository = movimientoStockRepository;
+        this.promocionRepository = promocionRepository;
+        this.motorPromociones = motorPromociones;
     }
+    // --- CAMBIO 1 FIN ---
 
-    @Transactional // ¡CRÍTICO! O se guarda toda la venta y se descuenta stock, o no se hace nada.
+    @Transactional
     public VentaResponseDTO crearVenta(NuevaVentaRequestDTO dto) {
 
-        // 1. Validaciones Iniciales
         Negocio negocio = negocioRepository.getReferenceById(dto.getNegocioId());
-
         SesionCaja caja = sesionCajaRepository.findById(dto.getSesionCajaId())
                 .orElseThrow(() -> new RuntimeException("Caja no encontrada"));
 
@@ -51,78 +54,84 @@ public class VentaService {
             throw new RuntimeException("No se puede vender con la caja cerrada");
         }
 
-        // 2. Crear Cabecera de Venta
+        // FASE 1 - Resolver el Carrito (Mapear a DTOs limpios)
+        List<ItemCotizadoDTO> carritoCotizado = new ArrayList<>();
+
+        for (ItemVentaRequestDTO itemDTO : dto.getItems()) {
+            Producto producto;
+            BigDecimal cantidadUnitaria = itemDTO.getCantidad();
+            BigDecimal factorConversion = BigDecimal.ONE;
+
+            if (itemDTO.getCodigoBarraEscaneado() != null) {
+                CodigoBarraProducto cbp = codigoBarraRepository.findByCodigoBarraAndNegocioId(itemDTO.getCodigoBarraEscaneado(), negocio.getId())
+                        .orElseThrow(() -> new RuntimeException("Código no encontrado: " + itemDTO.getCodigoBarraEscaneado()));
+                producto = cbp.getProducto();
+                factorConversion = cbp.getCantidadADescontar();
+            } else {
+                producto = productoRepository.findById(itemDTO.getProductoId())
+                        .orElseThrow(() -> new RuntimeException("Producto ID no encontrado"));
+            }
+
+            BigDecimal cantidadFisicaTotal = cantidadUnitaria.multiply(factorConversion);
+            if (producto.getStockActual().compareTo(cantidadFisicaTotal) < 0) {
+                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
+            }
+
+            carritoCotizado.add(new ItemCotizadoDTO(producto, cantidadUnitaria, cantidadFisicaTotal));
+        }
+
+        // --- CAMBIO 1 INICIO: FASE 2 Optimizada - Evitar colapso de DB ---
+        // 1. Extraemos los IDs que realmente están en este carrito
+        java.util.Set<Long> productosEnCarrito = carritoCotizado.stream()
+                .map(i -> i.getProducto().getId())
+                .collect(Collectors.toSet());
+
+        // 2. Traemos SOLO las promociones activas que involucran a estos productos (Query salvavidas)
+        List<Promocion> promosActivas = promocionRepository.findActivasPorNegocioYProductos(negocio.getId(), productosEnCarrito);
+
+        // 3. Delegamos al Motor (que ahora ordena por ahorro real)
+        motorPromociones.aplicarPromociones(carritoCotizado, promosActivas);
+        // --- CAMBIO 1 FIN ---
+
+
+        // FASE 3 - Persistencia (Igual a la versión anterior)
         Venta venta = new Venta();
         venta.setNegocio(negocio);
         venta.setSesionCaja(caja);
         venta.setFechaVenta(LocalDateTime.now());
         venta.setEstado(EstadoVenta.COMPLETADA);
 
-        // Inicializamos acumuladores
-        BigDecimal subtotalAcumulado = BigDecimal.ZERO;
+        BigDecimal subtotalBruto = BigDecimal.ZERO;
+        BigDecimal totalDescuentosGrales = BigDecimal.ZERO;
 
-        // 3. Procesar Items (Iterar el carrito)
-        for (ItemVentaRequestDTO itemDTO : dto.getItems()) {
+        for (ItemCotizadoDTO item : carritoCotizado) {
+            BigDecimal precioOriginal = item.getProducto().getPrecioVentaActual();
+            subtotalBruto = subtotalBruto.add(precioOriginal.multiply(item.getCantidadSolicitada()));
+            totalDescuentosGrales = totalDescuentosGrales.add(item.getDescuentoTotal());
 
-            // A. Identificar Producto y Cantidad Real
-            Producto producto;
-            BigDecimal cantidadUnitaria = itemDTO.getCantidad(); // Ej: 1 (unidad) o 0.5 (kg)
-            BigDecimal factorConversion = BigDecimal.ONE; // Por defecto 1
-
-            if (itemDTO.getCodigoBarraEscaneado() != null) {
-                // Buscamos por código (puede ser un Pack)
-                CodigoBarraProducto cbp = codigoBarraRepository.findByCodigoBarraAndNegocioId(itemDTO.getCodigoBarraEscaneado(), negocio.getId())
-                        .orElseThrow(() -> new RuntimeException("Código no encontrado: " + itemDTO.getCodigoBarraEscaneado()));
-
-                producto = cbp.getProducto();
-                factorConversion = cbp.getCantidadADescontar(); // Si es pack de 6, esto vale 6
-            } else {
-                // Búsqueda manual por ID
-                producto = productoRepository.findById(itemDTO.getProductoId())
-                        .orElseThrow(() -> new RuntimeException("Producto ID no encontrado"));
-            }
-
-            // B. Validar Stock
-            BigDecimal cantidadTotalADescontar = cantidadUnitaria.multiply(factorConversion);
-            if (producto.getStockActual().compareTo(cantidadTotalADescontar) < 0) {
-                // Opción: Lanzar error o permitir stock negativo (configuración de negocio).
-                // Por ahora lanzamos error.
-                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
-            }
-
-            // C. Crear Detalle (Snapshot)
             DetalleVenta detalle = new DetalleVenta();
-            detalle.setProducto(producto);
-            detalle.setCantidad(cantidadUnitaria); // Guardamos "1 pack", no "6 unidades" en el ticket visual
+            detalle.setVenta(venta);
+            detalle.setProducto(item.getProducto());
+            detalle.setCantidad(item.getCantidadSolicitada());
+            detalle.setCantidadFisica(item.getCantidadFisicaTotal());
 
-            // Foto histórica de precios
-            detalle.setNombreProductoHistorico(producto.getNombre());
-            detalle.setCostoHistorico(producto.getCostoActual());
-            detalle.setPrecioUnitarioHistorico(producto.getPrecioVentaActual()); // Precio de la unidad/pack
-            detalle.setTasaIvaHistorica(producto.getTasaIva());
+            detalle.setNombreProductoHistorico(item.getProducto().getNombre());
+            detalle.setCostoHistorico(item.getProducto().getCostoActual());
+            BigDecimal precioUnitarioConDesc = item.getSubtotalFinal().divide(item.getCantidadSolicitada(), 2, RoundingMode.HALF_UP);
+            detalle.setPrecioUnitarioHistorico(precioUnitarioConDesc);
+            detalle.setTasaIvaHistorica(item.getProducto().getTasaIva());
+            detalle.setSubTotal(item.getSubtotalFinal());
 
-            // Calculamos subtotal de la línea
-            BigDecimal subtotalLinea = producto.getPrecioVentaActual().multiply(cantidadUnitaria);
-            detalle.setSubTotal(subtotalLinea);
-
-            // Agregamos a la venta (Helper method bidireccional)
             venta.agregarDetalle(detalle);
 
-            subtotalAcumulado = subtotalAcumulado.add(subtotalLinea);
-
-            // D. Descontar Stock y Auditar
-            producto.setStockActual(producto.getStockActual().subtract(cantidadTotalADescontar));
-            productoRepository.save(producto); // Optimistic locking validará aquí si alguien más vendió
-
-            crearMovimientoStock(negocio, producto, cantidadTotalADescontar.negate(), "Venta #" + venta.getId());
+            item.getProducto().setStockActual(item.getProducto().getStockActual().subtract(item.getCantidadFisicaTotal()));
+            productoRepository.save(item.getProducto());
         }
 
-        // 4. Totales y Pagos
-        venta.setSubtotal(subtotalAcumulado);
-        venta.setTotalVenta(subtotalAcumulado); // Aquí restaríamos descuentos globales si hubiera
-        venta.setTotalDescuentos(BigDecimal.ZERO);
+        venta.setSubtotal(subtotalBruto);
+        venta.setTotalDescuentos(totalDescuentosGrales);
+        venta.setTotalVenta(subtotalBruto.subtract(totalDescuentosGrales));
 
-        // Procesar Pagos
         BigDecimal totalPagado = BigDecimal.ZERO;
         for (PagoVentaDTO pagoDTO : dto.getPagos()) {
             PagoVenta pago = new PagoVenta();
@@ -135,13 +144,15 @@ public class VentaService {
             totalPagado = totalPagado.add(pagoDTO.getMonto());
         }
 
-        // Validación final de montos
-        // Permitimos un margen de error de 0.01 por redondeos
         if (totalPagado.compareTo(venta.getTotalVenta()) < 0) {
-            throw new RuntimeException("El pago es insuficiente. Falta dinero.");
+            throw new RuntimeException("Pago insuficiente. Faltan $" + venta.getTotalVenta().subtract(totalPagado));
         }
 
         Venta ventaGuardada = ventaRepository.save(venta);
+
+        for(ItemCotizadoDTO item : carritoCotizado) {
+            crearMovimientoStock(negocio, item.getProducto(), item.getCantidadFisicaTotal().negate(), "Venta #" + ventaGuardada.getId());
+        }
 
         return mapToResponse(ventaGuardada);
     }
@@ -165,7 +176,6 @@ public class VentaService {
         dto.setTotal(v.getTotalVenta());
         dto.setEstado(v.getEstado().name());
 
-        // Mapeamos los items del ticket
         List<com.tinmarket.backend.dto.DetalleTicketDTO> detalles = v.getDetalles().stream().map(d -> {
             com.tinmarket.backend.dto.DetalleTicketDTO item = new com.tinmarket.backend.dto.DetalleTicketDTO();
             item.setNombreProducto(d.getNombreProductoHistorico());
@@ -184,19 +194,15 @@ public class VentaService {
         return mapToResponse(venta);
     }
 
-    // 2. LISTAR VENTAS POR FECHA (Para el reporte de caja)
     public List<VentaResponseDTO> listarVentas(Long negocioId, LocalDateTime desde, LocalDateTime hasta) {
-        // Si no mandan fechas, usamos el día de hoy por defecto
         if (desde == null || hasta == null) {
             desde = LocalDateTime.now().withHour(0).withMinute(0);
             hasta = LocalDateTime.now().withHour(23).withMinute(59);
         }
-
         List<Venta> ventas = ventaRepository.findByNegocioIdAndFechaVentaBetween(negocioId, desde, hasta);
         return ventas.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // 3. ANULAR VENTA (Devolución de Stock)
     @Transactional
     public void anularVenta(Long ventaId) {
         Venta venta = ventaRepository.findById(ventaId)
@@ -206,24 +212,20 @@ public class VentaService {
             throw new RuntimeException("Esta venta ya fue anulada anteriormente");
         }
 
-        // A. Restaurar Stock
         for (DetalleVenta detalle : venta.getDetalles()) {
             Producto producto = detalle.getProducto();
 
-            // Devolvemos la cantidad al stock (Sumamos)
-            BigDecimal cantidadARestaurar = detalle.getCantidad();
-            // NOTA: Si usaste lógica de packs en la venta, aquí deberías tener cuidado.
-            // Pero como en el detalle guardamos la cantidad "desglosada" o la unidad de venta,
-            // simplemente sumamos lo que salió.
+            // --- CAMBIO 5 INICIO: Solución al Bug de Anulación de Stock ---
+            // Ahora devolvemos la cantidad FISICA que se descontó (incluye factor conversión de códigos de barra)
+            BigDecimal cantidadARestaurar = detalle.getCantidadFisica();
+            // --- CAMBIO 5 FIN ---
 
             producto.setStockActual(producto.getStockActual().add(cantidadARestaurar));
             productoRepository.save(producto);
 
-            // B. Auditar el movimiento
             crearMovimientoStock(venta.getNegocio(), producto, cantidadARestaurar, "ANULACIÓN Venta #" + venta.getId());
         }
 
-        // C. Marcar venta como anulada
         venta.setEstado(EstadoVenta.ANULADA);
         ventaRepository.save(venta);
     }

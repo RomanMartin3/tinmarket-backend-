@@ -33,6 +33,8 @@ public class DetalleVenta {
 
     @Column(name = "costo_historico", nullable = false)
     private BigDecimal costoHistorico;
+    @Column(name = "cantidad_fisica", nullable = false)
+    private BigDecimal cantidadFisica;
 
     @Column(name = "precio_unitario_historico", nullable = false)
     private BigDecimal precioUnitarioHistorico;
