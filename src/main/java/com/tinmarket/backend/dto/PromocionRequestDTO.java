@@ -1,5 +1,6 @@
 package com.tinmarket.backend.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -22,8 +23,8 @@ public class PromocionRequestDTO {
     private LocalDateTime fechaFin;
 
     @NotEmpty(message = "Debe seleccionar al menos un producto")
-    private List<Long> productoIds;
-
+    @Valid
+    private List<ReglaRequestDTO> reglas;
     @NotNull
     private String tipoDescuento; // PORCENTAJE, MONTO_FIJO, N_X_M (Ej: 2x1)
 

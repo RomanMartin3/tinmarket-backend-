@@ -46,4 +46,12 @@ public class PromocionController {
         promocionService.eliminarDefinitivamente(id);
         return ResponseEntity.noContent().build();
     }
+    @PutMapping("/{id}")
+    public ResponseEntity<?> editar(@PathVariable Long id, @RequestBody @Valid PromocionRequestDTO dto) {
+        try {
+            return ResponseEntity.ok(promocionService.editarPromocion(id, dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }
