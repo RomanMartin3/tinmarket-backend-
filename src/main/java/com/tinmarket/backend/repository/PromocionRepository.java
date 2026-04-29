@@ -12,7 +12,7 @@ import java.util.Set;
 
 @Repository
 public interface PromocionRepository extends JpaRepository<Promocion, Long> {
-    List<Promocion> findByNegocioIdAndActivaTrue(Long negocioId);
+    List<Promocion> findByNegocioId(Long negocioId);
     @Query("SELECT DISTINCT p FROM Promocion p JOIN p.reglas r WHERE p.negocio.id = :negocioId AND p.activa = true AND r.producto.id IN :productoIds")
     List<Promocion> findActivasPorNegocioYProductos(@Param("negocioId") Long negocioId, @Param("productoIds") Set<Long> productoIds);
 }

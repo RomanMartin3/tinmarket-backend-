@@ -33,8 +33,23 @@ public class PromocionService {
         this.productoRepository = productoRepository;
     }
 
-    public List<Promocion> listarActivasPorNegocio(Long negocioId) {
-        return promocionRepository.findByNegocioIdAndActivaTrue(negocioId);
+    public List<Promocion> listarTodasPorNegocio(Long negocioId) {
+        return promocionRepository.findByNegocioId(negocioId);
+    }
+    @Transactional
+    public void alternarEstadoPromocion(Long id) {
+        Promocion promo = promocionRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Promoción no encontrada"));
+        promo.setActiva(!promo.isActiva());
+        promocionRepository.save(promo);
+    }
+
+    @Transactional
+    public void eliminarDefinitivamente(Long id) {
+        if (!promocionRepository.existsById(id)) {
+            throw new EntityNotFoundException("La promoción no existe");
+        }
+        promocionRepository.deleteById(id);
     }
 
     @Transactional
@@ -58,7 +73,7 @@ public class PromocionService {
             Producto producto = productoRepository.findById(prodId)
                     .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado: " + prodId));
 
-            // --- CAMBIO 1 INICIO: Bypass rentabilidad negativa para PRECIO_FIJO_COMBO ---
+
             if (tipoDescuento != TipoDescuento.PRECIO_FIJO_COMBO) {
                 BigDecimal precioActual = producto.getPrecioVentaActual();
                 BigDecimal costoActual = producto.getCostoActual();
@@ -78,7 +93,7 @@ public class PromocionService {
                             ") por debajo de su costo ($" + costoActual + ").");
                 }
             }
-            // --- CAMBIO 1 FIN ---
+
 
             ReglaPromocion regla = new ReglaPromocion();
             regla.setPromocion(promoGuardada);

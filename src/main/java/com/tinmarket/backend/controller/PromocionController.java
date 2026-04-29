@@ -23,7 +23,12 @@ public class PromocionController {
 
     @GetMapping
     public ResponseEntity<List<Promocion>> listar(@RequestParam Long negocioId) {
-        return ResponseEntity.ok(promocionService.listarActivasPorNegocio(negocioId));
+        return ResponseEntity.ok(promocionService.listarTodasPorNegocio(negocioId));
+    }
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<Void> toggle(@PathVariable Long id) {
+        promocionService.alternarEstadoPromocion(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping
@@ -37,8 +42,8 @@ public class PromocionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> desactivar(@PathVariable Long id) {
-        promocionService.desactivarPromocion(id);
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        promocionService.eliminarDefinitivamente(id);
         return ResponseEntity.noContent().build();
     }
 }
