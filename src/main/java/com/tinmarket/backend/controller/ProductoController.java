@@ -4,6 +4,7 @@ import com.tinmarket.backend.dto.ProductoRequestDTO;
 import com.tinmarket.backend.dto.ProductoResponseDTO;
 import com.tinmarket.backend.model.Producto;
 import com.tinmarket.backend.repository.ProductoRepository;
+import com.tinmarket.backend.security.SecurityUtils;
 import com.tinmarket.backend.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -25,8 +26,8 @@ public class ProductoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Producto>> listarTodos(@RequestParam Long negocioId) {
-
+    public ResponseEntity<List<Producto>> listarTodos() {
+        Long negocioId = SecurityUtils.getNegocioId();
         List<Producto> productos = productoService.listarActivosPorNegocio(negocioId);
         return ResponseEntity.ok(productos);
     }
@@ -35,6 +36,7 @@ public class ProductoController {
     // POST http://localhost:8080/api/productos
     @PostMapping
     public ResponseEntity<ProductoResponseDTO> guardarProducto(@RequestBody @Valid ProductoRequestDTO dto) {
+        dto.setNegocioId(SecurityUtils.getNegocioId());
         ProductoResponseDTO response = productoService.crearEditarProducto(dto);
         return ResponseEntity.ok(response);
     }
@@ -48,10 +50,9 @@ public class ProductoController {
     // GET http://localhost:8080/api/productos/search?query=coca&negocioId=1
     @GetMapping("/search")
     public ResponseEntity<List<Producto>> buscarProductos(
-            @RequestParam String query,
-            @RequestParam Long negocioId) {
+            @RequestParam String query) {
 
-        // Buscamos por nombre parcial
+        Long negocioId = SecurityUtils.getNegocioId();
         List<Producto> resultados = productoRepository.buscarEnPOS(query, negocioId);
         return ResponseEntity.ok(resultados);
     }

@@ -2,6 +2,7 @@ package com.tinmarket.backend.controller;
 
 import com.tinmarket.backend.dto.MovimientoStockRequestDTO;
 import com.tinmarket.backend.model.MovimientoStock;
+import com.tinmarket.backend.security.SecurityUtils;
 import com.tinmarket.backend.service.MovimientoStockService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -21,12 +22,15 @@ public class MovimientoStockController {
     }
 
     @GetMapping
-    public ResponseEntity<List<MovimientoStock>> listar(@RequestParam Long negocioId) {
+    public ResponseEntity<List<MovimientoStock>> listar() {
+        Long negocioId = SecurityUtils.getNegocioId();
         return ResponseEntity.ok(movimientoStockService.listarPorNegocio(negocioId));
     }
 
     @PostMapping
     public ResponseEntity<MovimientoStock> registrar(@RequestBody @Valid MovimientoStockRequestDTO dto) {
+        dto.setNegocioId(SecurityUtils.getNegocioId());
+        dto.setUsuarioId(SecurityUtils.getUsuarioId());
         return ResponseEntity.ok(movimientoStockService.registrarMovimientoManual(dto));
     }
 }

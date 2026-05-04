@@ -1,6 +1,7 @@
 package com.tinmarket.backend.controller;
 
 import com.tinmarket.backend.model.Proveedor;
+import com.tinmarket.backend.security.SecurityUtils;
 import com.tinmarket.backend.service.ProveedorService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +21,14 @@ public class ProveedorController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Proveedor>> listar(@RequestParam Long negocioId) {
+    public ResponseEntity<List<Proveedor>> listar() {
+        Long negocioId = SecurityUtils.getNegocioId();
         return ResponseEntity.ok(proveedorService.listarPorNegocio(negocioId));
     }
 
     @PostMapping
-    public ResponseEntity<Proveedor> guardar(@RequestBody Proveedor proveedor, @RequestParam Long negocioId) {
+    public ResponseEntity<Proveedor> guardar(@RequestBody Proveedor proveedor) {
+        Long negocioId = SecurityUtils.getNegocioId();
         return ResponseEntity.ok(proveedorService.guardar(proveedor, negocioId));
     }
 

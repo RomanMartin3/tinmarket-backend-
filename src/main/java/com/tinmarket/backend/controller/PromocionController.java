@@ -2,6 +2,7 @@ package com.tinmarket.backend.controller;
 
 import com.tinmarket.backend.dto.PromocionRequestDTO;
 import com.tinmarket.backend.model.Promocion;
+import com.tinmarket.backend.security.SecurityUtils;
 import com.tinmarket.backend.service.PromocionService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,8 @@ public class PromocionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Promocion>> listar(@RequestParam Long negocioId) {
+    public ResponseEntity<List<Promocion>> listar() {
+        Long negocioId = SecurityUtils.getNegocioId();
         return ResponseEntity.ok(promocionService.listarTodasPorNegocio(negocioId));
     }
     @PatchMapping("/{id}/toggle")
@@ -34,9 +36,9 @@ public class PromocionController {
     @PostMapping
     public ResponseEntity<?> crear(@RequestBody @Valid PromocionRequestDTO dto) {
         try {
+            dto.setNegocioId(SecurityUtils.getNegocioId()); // Seguridad: Sobrescritura
             return ResponseEntity.ok(promocionService.crearPromocion(dto));
         } catch (IllegalArgumentException e) {
-            // FIX: Atrapamos la rentabilidad negativa y devolvemos un JSON limpio (Error 400 en vez de 500)
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
@@ -49,6 +51,7 @@ public class PromocionController {
     @PutMapping("/{id}")
     public ResponseEntity<?> editar(@PathVariable Long id, @RequestBody @Valid PromocionRequestDTO dto) {
         try {
+            dto.setNegocioId(SecurityUtils.getNegocioId()); // Seguridad: Sobrescritura
             return ResponseEntity.ok(promocionService.editarPromocion(id, dto));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

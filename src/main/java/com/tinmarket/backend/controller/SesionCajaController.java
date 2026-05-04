@@ -4,6 +4,7 @@ package com.tinmarket.backend.controller;
 import com.tinmarket.backend.dto.AperturaCajaDTO;
 import com.tinmarket.backend.dto.ArqueoCajaDTO;
 import com.tinmarket.backend.model.SesionCaja;
+import com.tinmarket.backend.security.SecurityUtils;
 import com.tinmarket.backend.service.SesionCajaService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,8 @@ public class SesionCajaController {
 
     @PostMapping("/abrir")
     public ResponseEntity<SesionCaja> abrirCaja(@RequestBody @Valid AperturaCajaDTO dto) {
+        dto.setUsuarioId(SecurityUtils.getUsuarioId());
+        dto.setNegocioId(SecurityUtils.getNegocioId());
         return ResponseEntity.ok(sesionCajaService.abrirCaja(dto));
     }
 
@@ -31,7 +34,8 @@ public class SesionCajaController {
     }
 
     @GetMapping("/actual")
-    public ResponseEntity<SesionCaja> obtenerCajaActual(@RequestParam Long usuarioId) {
+    public ResponseEntity<SesionCaja> obtenerCajaActual() { // Se quitó @RequestParam
+        Long usuarioId = SecurityUtils.getUsuarioId();
         return sesionCajaService.obtenerCajaActual(usuarioId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());

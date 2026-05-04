@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+# Variables de entorno
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Cualquier archivo que empiece con .env
+.env.*
