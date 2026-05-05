@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configure(http)) // Mantenemos tu configuración actual de CORS
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll() // El Login es público
                         .anyRequest().authenticated() // TODO LO DEMÁS ESTÁ BLOQUEADO SIN TOKEN
                 )

@@ -2,10 +2,13 @@ package com.tinmarket.backend.service;
 
 import com.tinmarket.backend.dto.AperturaCajaDTO;
 import com.tinmarket.backend.dto.ArqueoCajaDTO;
+import com.tinmarket.backend.dto.CierreCajaResponseDTO;
 import com.tinmarket.backend.model.Negocio;
 import com.tinmarket.backend.model.SesionCaja;
 import com.tinmarket.backend.model.Usuario;
 import com.tinmarket.backend.model.enums.EstadoCaja;
+import com.tinmarket.backend.model.enums.EstadoVenta;
+import com.tinmarket.backend.model.enums.TipoPago;
 import com.tinmarket.backend.repository.NegocioRepository;
 import com.tinmarket.backend.repository.SesionCajaRepository;
 import com.tinmarket.backend.repository.UsuarioRepository;
@@ -55,7 +58,7 @@ public class SesionCajaService {
     }
 
     @Transactional
-    public SesionCaja cerrarCaja(ArqueoCajaDTO dto) {
+    public CierreCajaResponseDTO cerrarCaja(ArqueoCajaDTO dto) { // Cambia el tipo de retorno
         SesionCaja sesion = sesionCajaRepository.findById(dto.getSesionId())
                 .orElseThrow(() -> new RuntimeException("Sesión de caja no encontrada"));
 
@@ -63,20 +66,41 @@ public class SesionCajaService {
             throw new RuntimeException("Esta caja ya está cerrada");
         }
 
-        BigDecimal totalVentas = ventaRepository.findBySesionCajaId(sesion.getId()).stream()
-                .filter(v -> v.getEstado().name().equals("COMPLETADA"))
-                .map(v -> v.getTotalVenta())
+        // 1. Calcular total vendido SOLO EN EFECTIVO durante este turno
+        BigDecimal totalEfectivo = ventaRepository.findBySesionCajaId(sesion.getId()).stream()
+                .filter(v -> v.getEstado() == EstadoVenta.COMPLETADA)
+                .flatMap(v -> v.getPagos().stream()) // Buscamos en los pagos de cada venta
+                .filter(p -> p.getTipoPago() == TipoPago.EFECTIVO) // Solo sumamos el billete físico
+                .map(p -> p.getMonto())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal esperado = sesion.getMontoInicial().add(totalVentas);
+        // 2. El "Esperado" = Con cuánto abrí + Lo que vendí en billetes
+        BigDecimal esperado = sesion.getMontoInicial().add(totalEfectivo);
+
+        // 3. Diferencia = Lo que el cajero contó - Lo que el sistema esperaba
+        // Si contó $10.000 y el sistema esperaba $11.000 -> Diferencia = -1000 (Faltante)
         BigDecimal diferencia = dto.getMontoFinalInformado().subtract(esperado);
 
+        // 4. Actualizamos y guardamos la sesión
         sesion.setFechaCierre(LocalDateTime.now());
         sesion.setMontoFinalReal(dto.getMontoFinalInformado());
         sesion.setDiferencia(diferencia);
         sesion.setEstado(EstadoCaja.CERRADA);
+        sesionCajaRepository.save(sesion);
 
-        return sesionCajaRepository.save(sesion);
+        // 5. Armamos el DTO de respuesta para que el Frontend muestre el ticket
+        CierreCajaResponseDTO response = new CierreCajaResponseDTO();
+        response.setSesionId(sesion.getId());
+        response.setFechaApertura(sesion.getFechaApertura());
+        response.setFechaCierre(sesion.getFechaCierre());
+        response.setMontoInicial(sesion.getMontoInicial());
+        response.setTotalVentasEfectivo(totalEfectivo);
+        response.setMontoEsperado(esperado);
+        response.setMontoFinalInformado(sesion.getMontoFinalReal());
+        response.setDiferencia(diferencia);
+        response.setEstado(sesion.getEstado().name());
+
+        return response;
     }
 
     public Optional<SesionCaja> obtenerCajaActual(Long usuarioId) {

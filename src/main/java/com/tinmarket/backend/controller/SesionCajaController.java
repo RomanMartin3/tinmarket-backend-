@@ -3,6 +3,7 @@ package com.tinmarket.backend.controller;
 
 import com.tinmarket.backend.dto.AperturaCajaDTO;
 import com.tinmarket.backend.dto.ArqueoCajaDTO;
+import com.tinmarket.backend.dto.CierreCajaResponseDTO;
 import com.tinmarket.backend.model.SesionCaja;
 import com.tinmarket.backend.security.SecurityUtils;
 import com.tinmarket.backend.service.SesionCajaService;
@@ -29,7 +30,7 @@ public class SesionCajaController {
     }
 
     @PostMapping("/cerrar")
-    public ResponseEntity<SesionCaja> cerrarCaja(@RequestBody @Valid ArqueoCajaDTO dto) {
+    public ResponseEntity<CierreCajaResponseDTO> cerrarCaja(@RequestBody @Valid ArqueoCajaDTO dto) {
         return ResponseEntity.ok(sesionCajaService.cerrarCaja(dto));
     }
 
