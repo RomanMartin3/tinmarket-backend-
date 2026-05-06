@@ -11,6 +11,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/cajas")
 @CrossOrigin(origins = "*")
@@ -40,5 +42,10 @@ public class SesionCajaController {
         return sesionCajaService.obtenerCajaActual(usuarioId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
+    }
+    @GetMapping
+    public ResponseEntity<List<SesionCaja>> listarCajas() {
+        Long negocioId = SecurityUtils.getNegocioId();
+        return ResponseEntity.ok(sesionCajaService.listarSesionesPorNegocio(negocioId));
     }
 }

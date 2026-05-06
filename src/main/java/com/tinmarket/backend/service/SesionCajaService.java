@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -106,4 +107,8 @@ public class SesionCajaService {
     public Optional<SesionCaja> obtenerCajaActual(Long usuarioId) {
         return sesionCajaRepository.findByUsuarioIdAndEstado(usuarioId, EstadoCaja.ABIERTA);
     }
+    public List<SesionCaja> listarSesionesPorNegocio(Long negocioId) {
+        return sesionCajaRepository.findByNegocioIdOrderByFechaAperturaDesc(negocioId);
+    }
+
 }
