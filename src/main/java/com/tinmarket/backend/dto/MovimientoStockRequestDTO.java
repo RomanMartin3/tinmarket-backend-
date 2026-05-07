@@ -6,13 +6,13 @@ import java.math.BigDecimal;
 
 @Data
 public class MovimientoStockRequestDTO {
-    @NotNull
+
     private Long negocioId;
 
     @NotNull
     private Long productoId;
 
-    @NotNull
+
     private Long usuarioId;
 
     @NotNull

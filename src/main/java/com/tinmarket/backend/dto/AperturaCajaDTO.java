@@ -7,9 +7,9 @@ import java.math.BigDecimal;
 
 @Data
 public class AperturaCajaDTO {
-    @NotNull
+
     private Long usuarioId;
-    @NotNull
+
     private Long negocioId;
     @NotNull @PositiveOrZero
     private BigDecimal montoInicial;

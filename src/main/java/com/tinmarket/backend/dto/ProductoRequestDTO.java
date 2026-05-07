@@ -11,7 +11,6 @@ public class ProductoRequestDTO {
     // Si viene ID es una edición, si es null es creación
     private Long id;
 
-    @NotNull(message = "El negocio es obligatorio")
     private Long negocioId;
 
     private Long categoriaId;

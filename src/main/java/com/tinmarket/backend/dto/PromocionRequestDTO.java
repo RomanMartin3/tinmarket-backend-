@@ -10,7 +10,7 @@ import java.util.List;
 
 @Data
 public class PromocionRequestDTO {
-    @NotNull
+
     private Long negocioId;
 
     @NotNull
