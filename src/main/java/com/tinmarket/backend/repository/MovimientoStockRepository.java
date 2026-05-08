@@ -1,6 +1,8 @@
 package com.tinmarket.backend.repository;
 
 import com.tinmarket.backend.model.MovimientoStock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,8 +13,8 @@ public interface MovimientoStockRepository extends JpaRepository<MovimientoStock
 
     // Lógica: "Ver el historial de movimientos de la Coca Cola"
     // Ideal para saber si hubo robos o mermas.
-    List<MovimientoStock> findByProductoIdOrderByFechaDesc(Long productoId);
+    Page<MovimientoStock> findByProductoIdOrderByFechaDesc(Long productoId, Pageable pageable);
 
     // Lógica: Ver todos los movimientos de un negocio
-    List<MovimientoStock> findByNegocioIdOrderByFechaDesc(Long negocioId);
+    Page<MovimientoStock> findByNegocioIdOrderByFechaDesc(Long negocioId, Pageable pageable);
 }

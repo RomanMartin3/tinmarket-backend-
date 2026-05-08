@@ -11,6 +11,8 @@ import com.tinmarket.backend.repository.NegocioRepository;
 import com.tinmarket.backend.repository.ProductoRepository;
 import com.tinmarket.backend.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,13 +35,10 @@ public class MovimientoStockService {
         this.usuarioRepository = usuarioRepository;
     }
 
-    public List<MovimientoStock> listarPorNegocio(Long negocioId) {
+    public Page<MovimientoStock> listarPorNegocio(Long negocioId, Pageable pageable) {
         // Asumiendo que tenés un findByNegocioIdOrderByFechaDesc en tu repositorio
         // Si no lo tenés, podés usar findAll() y filtrarlo, pero lo ideal es tenerlo en el Repo.
-        return movimientoStockRepository.findAll().stream()
-                .filter(m -> m.getNegocio().getId().equals(negocioId))
-                .sorted((m1, m2) -> m2.getFecha().compareTo(m1.getFecha()))
-                .toList();
+        return movimientoStockRepository.findByNegocioIdOrderByFechaDesc(negocioId, pageable);
     }
 
     @Transactional
