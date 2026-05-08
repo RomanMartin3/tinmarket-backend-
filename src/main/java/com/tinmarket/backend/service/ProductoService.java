@@ -11,6 +11,8 @@ import com.tinmarket.backend.model.Producto;
 import com.tinmarket.backend.model.enums.UnidadMedida;
 import com.tinmarket.backend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -110,9 +112,9 @@ public class ProductoService {
         return mapToResponse(guardado);
     }
 
-    public List<Producto> listarActivosPorNegocio(Long negocioId) {
+    public Page<Producto> listarActivosPorNegocio(Long negocioId, Pageable pageable) {
         // Aquí podríamos validar si el negocio existe, si el usuario tiene permisos, etc.
-        return productoRepository.findByNegocioIdAndActivoTrue(negocioId);
+        return productoRepository.findByNegocioIdAndActivoTrue(negocioId, pageable);
     }
 
     public List<Producto> buscarEnPOS(String query, Long negocioId) {

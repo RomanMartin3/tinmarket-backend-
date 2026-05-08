@@ -1,6 +1,9 @@
 package com.tinmarket.backend.repository;
 
 import com.tinmarket.backend.model.Producto;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,7 +14,7 @@ import java.util.Optional;
 
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
-    List<Producto> findByNegocioIdAndActivoTrue(Long negocioId);
+    Page<Producto> findByNegocioIdAndActivoTrue(Long negocioId , Pageable pageable);
 
     @Query("SELECT DISTINCT p FROM Producto p " +
             "LEFT JOIN CodigoBarraProducto c ON c.producto.id = p.id " +
@@ -20,6 +23,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
             "OR p.sku = :query " +
             "OR p.id IN (SELECT c.producto.id FROM CodigoBarraProducto c WHERE c.codigoBarra = :query))")
     List<Producto> buscarEnPOS(@Param("query") String query, @Param("negocioId") Long negocioId);
+
+    @Query("SELECT p FROM Producto p WHERE p.negocio.id = :negocioId AND p.activo = true AND p.stockActual <= p.stockMinimoAlerta")
+    List<Producto> buscarAlertasDeStock(@Param("negocioId") Long negocioId);
 
 
 }

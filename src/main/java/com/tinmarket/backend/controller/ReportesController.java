@@ -83,10 +83,8 @@ public class ReportesController {
     // Reporte en tiempo real de alertas de stock (No necesita fechas)
     @GetMapping("/alertas-stock")
     public ResponseEntity<List<Producto>> getAlertasStock() {
-        List<Producto> todos = productoRepository.findByNegocioIdAndActivoTrue(SecurityUtils.getNegocioId());
-        List<Producto> enAlerta = todos.stream()
-                .filter(p -> p.getStockActual().compareTo(p.getStockMinimoAlerta()) <= 0)
-                .collect(Collectors.toList());
+        // La base de datos hace todo el trabajo sucio y nos devuelve solo los que importan
+        List<Producto> enAlerta = productoRepository.buscarAlertasDeStock(SecurityUtils.getNegocioId());
         return ResponseEntity.ok(enAlerta);
     }
 }
