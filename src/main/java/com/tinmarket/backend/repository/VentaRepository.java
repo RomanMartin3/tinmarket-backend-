@@ -2,6 +2,8 @@ package com.tinmarket.backend.repository;
 
 import com.tinmarket.backend.dto.ReportesDTO.*;
 import com.tinmarket.backend.model.Venta;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -43,4 +45,6 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             "WHERE v.negocio.id = :negocioId AND v.fechaVenta BETWEEN :desde AND :hasta AND v.estado = 'COMPLETADA' " +
             "GROUP BY p.tipoPago")
     List<MedioPagoDTO> obtenerVentasPorMedioPago(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    Page<Venta> findByNegocioIdOrderByFechaVentaDesc(Long negocioId, Pageable pageable);
 }

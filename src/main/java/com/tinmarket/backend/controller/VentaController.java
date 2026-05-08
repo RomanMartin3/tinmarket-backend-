@@ -2,9 +2,13 @@ package com.tinmarket.backend.controller;
 
 import com.tinmarket.backend.dto.NuevaVentaRequestDTO;
 import com.tinmarket.backend.dto.VentaResponseDTO;
+import com.tinmarket.backend.model.Venta;
 import com.tinmarket.backend.security.SecurityUtils;
 import com.tinmarket.backend.service.VentaService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,13 +42,15 @@ public class VentaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<VentaResponseDTO>> listarVentas(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
+    public ResponseEntity<Page<Venta>> listarVentas(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         Long negocioId = SecurityUtils.getNegocioId();
-        List<VentaResponseDTO> ventas = ventaService.listarVentas(negocioId, desde, hasta);
-        return ResponseEntity.ok(ventas);
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Cambiamos de obtenerVentasDelDia a obtenerVentasPaginadas
+        return ResponseEntity.ok(ventaService.obtenerVentasPaginadas(negocioId, pageable));
     }
 
     // 4. Anular Venta (Devolución)

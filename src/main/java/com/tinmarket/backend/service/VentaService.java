@@ -4,6 +4,8 @@ import com.tinmarket.backend.dto.*;
 import com.tinmarket.backend.model.*;
 import com.tinmarket.backend.model.enums.*;
 import com.tinmarket.backend.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -228,5 +230,9 @@ public class VentaService {
 
         venta.setEstado(EstadoVenta.ANULADA);
         ventaRepository.save(venta);
+    }
+
+    public Page<Venta> obtenerVentasPaginadas(Long negocioId, Pageable pageable) {
+        return ventaRepository.findByNegocioIdOrderByFechaVentaDesc(negocioId, pageable);
     }
 }
