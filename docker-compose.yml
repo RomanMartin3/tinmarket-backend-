@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: tinmarket-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # Fijate que en la URL usamos "tinmarket-mysql", que es el nombre del contenedor de la BD
+      - SPRING_DATASOURCE_URL=jdbc:mysql://tinmarket-mysql:3306/stock_saas_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET_KEY=${JWT_SECRET}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    networks:
+      - tinmarket-net
+
+networks:
+  tinmarket-net:
+    external: true
