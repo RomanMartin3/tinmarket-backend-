@@ -29,11 +29,12 @@ public class VentaService {
     // --- CAMBIO 1 INICIO: Inyectamos PromocionRepository y el nuevo MotorPromociones ---
     private final PromocionRepository promocionRepository;
     private final MotorPromociones motorPromociones;
+    private final ClienteRepository clienteRepository;
 
     public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository,
                         CodigoBarraProductoRepository codigoBarraRepository, SesionCajaRepository sesionCajaRepository,
                         NegocioRepository negocioRepository, MovimientoStockRepository movimientoStockRepository,
-                        PromocionRepository promocionRepository, MotorPromociones motorPromociones) {
+                        PromocionRepository promocionRepository, MotorPromociones motorPromociones, ClienteRepository clienteRepository) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
         this.codigoBarraRepository = codigoBarraRepository;
@@ -42,6 +43,8 @@ public class VentaService {
         this.movimientoStockRepository = movimientoStockRepository;
         this.promocionRepository = promocionRepository;
         this.motorPromociones = motorPromociones;
+        this.clienteRepository = clienteRepository;
+
     }
     // --- CAMBIO 1 FIN ---
 
@@ -134,7 +137,23 @@ public class VentaService {
         venta.setTotalDescuentos(totalDescuentosGrales);
         venta.setTotalVenta(subtotalBruto.subtract(totalDescuentosGrales));
 
-        BigDecimal totalPagado = BigDecimal.ZERO;
+        // 1. Validar que la suma de todos los pagos ingresados cubra el total de la venta
+        BigDecimal sumaPagos = dto.getPagos().stream()
+                .map(PagoVentaDTO::getMonto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (sumaPagos.compareTo(venta.getTotalVenta()) < 0) {
+            throw new RuntimeException("Pago insuficiente. Faltan $" + venta.getTotalVenta().subtract(sumaPagos));
+        }
+
+        // 2. Si hay un cliente seleccionado (Cuenta Corriente), lo asignamos a la Venta
+        if (dto.getClienteId() != null) {
+            Cliente cliente = clienteRepository.findById(dto.getClienteId())
+                    .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+            venta.setCliente(cliente);
+        }
+
+        // 3. Procesar cada pago (PAGO MIXTO)
         for (PagoVentaDTO pagoDTO : dto.getPagos()) {
             PagoVenta pago = new PagoVenta();
             pago.setVenta(venta);
@@ -142,14 +161,26 @@ public class VentaService {
             pago.setMonto(pagoDTO.getMonto());
             pago.setReferenciaPago(pagoDTO.getReferencia());
 
+            // 4. LÓGICA DE FIADO: Si el pago es Cuenta Corriente, sumamos la deuda al cliente
+            if (pago.getTipoPago() == TipoPago.CTA_CORRIENTE) {
+                if (venta.getCliente() == null) {
+                    throw new RuntimeException("Para cobrar con Cuenta Corriente, debe seleccionar un Cliente.");
+                }
+
+                Cliente clienteFiado = venta.getCliente();
+                clienteFiado.setSaldoDeuda(clienteFiado.getSaldoDeuda().add(pago.getMonto()));
+
+                // Validar límite de crédito opcional
+                if (clienteFiado.getSaldoDeuda().compareTo(clienteFiado.getLimiteCredito()) > 0) {
+                    throw new RuntimeException("El cliente superó su límite de crédito.");
+                }
+                clienteRepository.save(clienteFiado); // Actualizamos la deuda en la base de datos
+            }
+
             venta.getPagos().add(pago);
-            totalPagado = totalPagado.add(pagoDTO.getMonto());
         }
 
-        if (totalPagado.compareTo(venta.getTotalVenta()) < 0) {
-            throw new RuntimeException("Pago insuficiente. Faltan $" + venta.getTotalVenta().subtract(totalPagado));
-        }
-
+        // Guardamos la venta con todos sus pagos y su cliente asociado
         Venta ventaGuardada = ventaRepository.save(venta);
 
         for(ItemCotizadoDTO item : carritoCotizado) {

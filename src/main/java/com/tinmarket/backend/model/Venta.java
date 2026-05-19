@@ -28,8 +28,8 @@ public class Venta {
     private SesionCaja sesionCaja;
 
     // Dejamos clienteId como Long simple por ahora (opcional)
-    @Column(name = "cliente_id")
-    private Long clienteId;
+    @ManyToOne @JoinColumn(name = "cliente_id")
+    private Cliente cliente;
 
     @Column(name = "fecha_venta")
     private LocalDateTime fechaVenta;
