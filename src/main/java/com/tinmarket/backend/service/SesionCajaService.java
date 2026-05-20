@@ -9,10 +9,7 @@ import com.tinmarket.backend.model.Usuario;
 import com.tinmarket.backend.model.enums.EstadoCaja;
 import com.tinmarket.backend.model.enums.EstadoVenta;
 import com.tinmarket.backend.model.enums.TipoPago;
-import com.tinmarket.backend.repository.NegocioRepository;
-import com.tinmarket.backend.repository.SesionCajaRepository;
-import com.tinmarket.backend.repository.UsuarioRepository;
-import com.tinmarket.backend.repository.VentaRepository;
+import com.tinmarket.backend.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +26,18 @@ public class SesionCajaService {
     private final UsuarioRepository usuarioRepository;
     private final VentaRepository ventaRepository;
 
-    public SesionCajaService(SesionCajaRepository sesionCajaRepository, NegocioRepository negocioRepository, UsuarioRepository usuarioRepository, VentaRepository ventaRepository) {
+    private final PagoCuentaCorrienteRepository pagoCuentaCorrienteRepository;
+
+    public SesionCajaService(SesionCajaRepository sesionCajaRepository,
+                             NegocioRepository negocioRepository,
+                             UsuarioRepository usuarioRepository,
+                             VentaRepository ventaRepository,
+                             PagoCuentaCorrienteRepository pagoCuentaCorrienteRepository) {
         this.sesionCajaRepository = sesionCajaRepository;
         this.negocioRepository = negocioRepository;
         this.usuarioRepository = usuarioRepository;
         this.ventaRepository = ventaRepository;
+        this.pagoCuentaCorrienteRepository = pagoCuentaCorrienteRepository;
     }
 
     @Transactional
@@ -59,7 +63,7 @@ public class SesionCajaService {
     }
 
     @Transactional
-    public CierreCajaResponseDTO cerrarCaja(ArqueoCajaDTO dto) { // Cambia el tipo de retorno
+    public CierreCajaResponseDTO cerrarCaja(ArqueoCajaDTO dto) {
         SesionCaja sesion = sesionCajaRepository.findById(dto.getSesionId())
                 .orElseThrow(() -> new RuntimeException("Sesión de caja no encontrada"));
 
@@ -67,35 +71,42 @@ public class SesionCajaService {
             throw new RuntimeException("Esta caja ya está cerrada");
         }
 
-        // 1. Calcular total vendido SOLO EN EFECTIVO durante este turno
-        BigDecimal totalEfectivo = ventaRepository.findBySesionCajaId(sesion.getId()).stream()
+        // 1. Efectivo de VENTAS
+        BigDecimal totalEfectivoVentas = ventaRepository.findBySesionCajaId(sesion.getId()).stream()
                 .filter(v -> v.getEstado() == EstadoVenta.COMPLETADA)
-                .flatMap(v -> v.getPagos().stream()) // Buscamos en los pagos de cada venta
-                .filter(p -> p.getTipoPago() == TipoPago.EFECTIVO) // Solo sumamos el billete físico
+                .flatMap(v -> v.getPagos().stream())
+                .filter(p -> p.getTipoPago() == TipoPago.EFECTIVO)
                 .map(p -> p.getMonto())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 2. El "Esperado" = Con cuánto abrí + Lo que vendí en billetes
-        BigDecimal esperado = sesion.getMontoInicial().add(totalEfectivo);
+        // 2. Efectivo de COBROS DE CUENTA CORRIENTE
+        BigDecimal totalEfectivoCobros = pagoCuentaCorrienteRepository
+                .findBySesionCajaIdAndTipoPago(sesion.getId(), TipoPago.EFECTIVO)
+                .stream()
+                .map(p -> p.getMonto())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 3. Diferencia = Lo que el cajero contó - Lo que el sistema esperaba
-        // Si contó $10.000 y el sistema esperaba $11.000 -> Diferencia = -1000 (Faltante)
+        // Total real que ingresó en billetes físicos
+        BigDecimal totalEfectivoFisico = totalEfectivoVentas.add(totalEfectivoCobros);
+
+        // 3. Monto Esperado en Caja
+        BigDecimal esperado = sesion.getMontoInicial().add(totalEfectivoFisico);
+
+        // 4. Diferencia
         BigDecimal diferencia = dto.getMontoFinalInformado().subtract(esperado);
 
-        // 4. Actualizamos y guardamos la sesión
         sesion.setFechaCierre(LocalDateTime.now());
         sesion.setMontoFinalReal(dto.getMontoFinalInformado());
         sesion.setDiferencia(diferencia);
         sesion.setEstado(EstadoCaja.CERRADA);
         sesionCajaRepository.save(sesion);
 
-        // 5. Armamos el DTO de respuesta para que el Frontend muestre el ticket
         CierreCajaResponseDTO response = new CierreCajaResponseDTO();
         response.setSesionId(sesion.getId());
         response.setFechaApertura(sesion.getFechaApertura());
         response.setFechaCierre(sesion.getFechaCierre());
         response.setMontoInicial(sesion.getMontoInicial());
-        response.setTotalVentasEfectivo(totalEfectivo);
+        response.setTotalVentasEfectivo(totalEfectivoFisico);
         response.setMontoEsperado(esperado);
         response.setMontoFinalInformado(sesion.getMontoFinalReal());
         response.setDiferencia(diferencia);
@@ -110,5 +121,8 @@ public class SesionCajaService {
     public List<SesionCaja> listarSesionesPorNegocio(Long negocioId) {
         return sesionCajaRepository.findByNegocioIdOrderByFechaAperturaDesc(negocioId);
     }
+
+
+
 
 }

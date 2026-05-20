@@ -15,4 +15,5 @@ public interface SesionCajaRepository extends JpaRepository<SesionCaja, Long> {
     // O recuperar la caja actual para asignarle la venta.
     Optional<SesionCaja> findByUsuarioIdAndEstado(Long usuarioId, EstadoCaja estado);
     List<SesionCaja> findByNegocioIdOrderByFechaAperturaDesc(Long negocioId);
+    Optional<SesionCaja> findFirstByNegocioIdAndEstadoOrderByIdDesc(Long negocioId, EstadoCaja estado);
 }
