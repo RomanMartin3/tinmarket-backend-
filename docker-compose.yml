@@ -13,7 +13,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - JWT_SECRET_KEY=${JWT_SECRET}
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
     networks:
       - tinmarket-net
 
