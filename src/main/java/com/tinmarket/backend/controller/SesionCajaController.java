@@ -48,4 +48,19 @@ public class SesionCajaController {
         Long negocioId = SecurityUtils.getNegocioId();
         return ResponseEntity.ok(sesionCajaService.listarSesionesPorNegocio(negocioId));
     }
+
+    @PostMapping("/actual/movimientos")
+    public ResponseEntity<?> registrarMovimiento(@RequestBody @Valid com.tinmarket.backend.dto.MovimientoCajaRequestDTO dto) {
+        Long usuarioId = SecurityUtils.getUsuarioId();
+        sesionCajaService.registrarMovimiento(usuarioId, dto);
+        // Devolvemos el mapa acá para que el POST responda con un JSON válido y api.ts no explote
+        return ResponseEntity.ok(java.util.Map.of("mensaje", "Movimiento registrado exitosamente"));
+    }
+
+    @GetMapping("/actual/movimientos")
+    public ResponseEntity<?> listarMovimientosActuales() {
+        Long usuarioId = SecurityUtils.getUsuarioId();
+        // Llamamos al servicio correspondiente para retornar la lista real de movimientos
+        return ResponseEntity.ok(sesionCajaService.listarMovimientosCajaActual(usuarioId));
+    }
 }

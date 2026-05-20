@@ -11,6 +11,8 @@ public class CierreCajaResponseDTO {
     private LocalDateTime fechaCierre;
     private BigDecimal montoInicial;
     private BigDecimal totalVentasEfectivo;
+    private BigDecimal totalIngresosExtras; // <-- NUEVO
+    private BigDecimal totalEgresos;
     private BigDecimal montoEsperado; // Lo que el sistema calculó
     private BigDecimal montoFinalInformado; // Lo que el cajero contó
     private BigDecimal diferencia;
