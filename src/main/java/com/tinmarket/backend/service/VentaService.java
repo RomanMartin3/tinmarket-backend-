@@ -189,7 +189,7 @@ public class VentaService {
         Venta ventaGuardada = ventaRepository.save(venta);
 
         for(ItemCotizadoDTO item : carritoCotizado) {
-            crearMovimientoStock(negocio, item.getProducto(), item.getCantidadFisicaTotal().negate(), "Venta #" + ventaGuardada.getId());
+            crearMovimientoStock(negocio, item.getProducto(), item.getCantidadFisicaTotal().negate(), "Venta #" + ventaGuardada.getNumeroVenta());
         }
 
         return mapToResponse(ventaGuardada);
@@ -263,7 +263,7 @@ public class VentaService {
             producto.setStockActual(producto.getStockActual().add(cantidadARestaurar));
             productoRepository.save(producto);
 
-            crearMovimientoStock(venta.getNegocio(), producto, cantidadARestaurar, "ANULACIÓN Venta #" + venta.getId());
+            crearMovimientoStock(venta.getNegocio(), producto, cantidadARestaurar, "ANULACIÓN Venta #" + venta.getNumeroVenta());
         }
 
         venta.setEstado(EstadoVenta.ANULADA);
