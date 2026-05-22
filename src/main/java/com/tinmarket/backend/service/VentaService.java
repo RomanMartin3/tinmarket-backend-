@@ -153,6 +153,9 @@ public class VentaService {
             venta.setCliente(cliente);
         }
 
+        Long proximoNumero = ventaRepository.findMaxNumeroVentaByNegocioId(negocio.getId()) + 1;
+        venta.setNumeroVenta(proximoNumero);
+
         // 3. Procesar cada pago (PAGO MIXTO)
         for (PagoVentaDTO pagoDTO : dto.getPagos()) {
             PagoVenta pago = new PagoVenta();
@@ -177,8 +180,7 @@ public class VentaService {
                 clienteRepository.save(clienteFiado); // Actualizamos la deuda en la base de datos
             }
 
-            Long proximoNumero = ventaRepository.findMaxNumeroVentaByNegocioId(negocio.getId()) + 1;
-            venta.setNumeroVenta(proximoNumero);
+
 
             venta.getPagos().add(pago);
         }
