@@ -8,6 +8,7 @@ import java.util.List;
 @Data
 public class VentaResponseDTO {
     private Long id;
+    private Long numeroVenta;
     private LocalDateTime fecha;
     private String nombreCajero;
     private BigDecimal total;

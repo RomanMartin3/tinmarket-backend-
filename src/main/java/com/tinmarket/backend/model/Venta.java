@@ -46,6 +46,9 @@ public class Venta {
     @Enumerated(EnumType.STRING)
     private EstadoVenta estado;
 
+    @Column(name = "numero_venta", nullable = false)
+    private Long numeroVenta;
+
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude // <--- OBLIGATORIO: Evita el bucle infinito al imprimir logs
     @JsonManagedReference // <--- OBLIGATORIO: Evita bucle infinito al convertir a JSON

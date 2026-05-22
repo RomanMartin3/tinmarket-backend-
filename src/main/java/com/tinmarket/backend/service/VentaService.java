@@ -177,6 +177,9 @@ public class VentaService {
                 clienteRepository.save(clienteFiado); // Actualizamos la deuda en la base de datos
             }
 
+            Long proximoNumero = ventaRepository.findMaxNumeroVentaByNegocioId(negocio.getId()) + 1;
+            venta.setNumeroVenta(proximoNumero);
+
             venta.getPagos().add(pago);
         }
 
@@ -205,9 +208,11 @@ public class VentaService {
     private VentaResponseDTO mapToResponse(Venta v) {
         VentaResponseDTO dto = new VentaResponseDTO();
         dto.setId(v.getId());
+        dto.setNumeroVenta(v.getNumeroVenta());
         dto.setFecha(v.getFechaVenta());
         dto.setTotal(v.getTotalVenta());
         dto.setEstado(v.getEstado().name());
+
 
         List<com.tinmarket.backend.dto.DetalleTicketDTO> detalles = v.getDetalles().stream().map(d -> {
             com.tinmarket.backend.dto.DetalleTicketDTO item = new com.tinmarket.backend.dto.DetalleTicketDTO();

@@ -47,4 +47,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     List<MedioPagoDTO> obtenerVentasPorMedioPago(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 
     Page<Venta> findByNegocioIdOrderByFechaVentaDesc(Long negocioId, Pageable pageable);
+
+    @Query("SELECT COALESCE(MAX(v.numeroVenta), 0) FROM Venta v WHERE v.negocio.id = :negocioId")
+    Long findMaxNumeroVentaByNegocioId(@Param("negocioId") Long negocioId);
 }
