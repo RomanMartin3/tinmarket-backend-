@@ -55,7 +55,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Agrega aqu  tus dominios de producci n cuando los tengas
-        configuration.setAllowedOrigins(List.of("http://localhost:5173","https://tinmarket.com.ar", "https://www.tinmarket.com.ar"));
+        configuration.setAllowedOrigins(List.of("http://localhost:5173","https://tinmarket.com.ar", "https://www.tinmarket.com.ar", "https://app.tinmarket.com.ar"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
